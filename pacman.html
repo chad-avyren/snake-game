@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pac-Man - Classic Arcade</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #000000 0%, #1a1a2e 50%, #000000 100%);
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,0,0.03) 0px, transparent 1px, transparent 2px, rgba(255,255,0,0.03) 3px),
+                repeating-linear-gradient(90deg, rgba(255,255,0,0.03) 0px, transparent 1px, transparent 2px, rgba(255,255,0,0.03) 3px);
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(20px); }
+        }
+
+        #gameContainer {
+            position: relative;
+            z-index: 1;
+        }
+
+        canvas {
+            border: 4px solid #ffff00;
+            box-shadow:
+                0 0 20px rgba(0, 0, 0, 0.8),
+                0 0 40px rgba(255, 255, 0, 0.3),
+                inset 0 0 20px rgba(0, 0, 0, 0.5);
+            background: #000;
+            border-radius: 4px;
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #ffff00;
+            text-shadow:
+                2px 2px 0 #ff6600,
+                4px 4px 0 #ff0000,
+                0 0 30px #ffff00;
+            margin-bottom: 30px;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 2px 2px 0 #ff6600, 4px 4px 0 #ff0000, 0 0 30px #ffff00; }
+            50% { text-shadow: 2px 2px 0 #ff6600, 4px 4px 0 #ff0000, 0 0 50px #ffff00, 0 0 70px #ffff00; }
+        }
+
+        .instructions {
+            font-size: 10px;
+            line-height: 20px;
+            margin: 20px 0;
+            color: #ccc;
+        }
+
+        .button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            padding: 15px 30px;
+            margin: 10px;
+            background: linear-gradient(45deg, #ffff00, #ffcc00);
+            border: 3px solid #fff;
+            color: #000;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 255, 0, 0.4);
+            transition: all 0.3s;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .button:hover {
+            background: linear-gradient(45deg, #ffff66, #ffff00);
+            box-shadow: 0 6px 20px rgba(255, 255, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(255, 255, 0, 0.4);
+        }
+
+        .score-display {
+            font-size: 14px;
+            margin: 20px 0;
+            color: #ffff00;
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: #888;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            color: #ffff00;
+        }
+
+        .ghost-info {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            font-size: 8px;
+            color: #ccc;
+        }
+
+        .ghost-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ghost-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50% 50% 0 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="game" width="560" height="620"></canvas>
+
+        <div id="startScreen">
+            <h1>PAC-MAN</h1>
+            <div class="instructions">
+                Use Arrow Keys or WASD to Move<br><br>
+                ⬆️ ⬇️ ⬅️ ➡️<br><br>
+                Eat all dots to win!<br>
+                Avoid the ghosts!<br>
+                Power pellets make ghosts edible<br><br>
+                Press SPACE to Pause
+            </div>
+            <div class="ghost-info">
+                <div class="ghost-item">
+                    <div class="ghost-preview" style="background: #ff0000;"></div>
+                    <span>Blinky</span>
+                </div>
+                <div class="ghost-item">
+                    <div class="ghost-preview" style="background: #ffb8ff;"></div>
+                    <span>Pinky</span>
+                </div>
+                <div class="ghost-item">
+                    <div class="ghost-preview" style="background: #00ffff;"></div>
+                    <span>Inky</span>
+                </div>
+                <div class="ghost-item">
+                    <div class="ghost-preview" style="background: #ffb851;"></div>
+                    <span>Clyde</span>
+                </div>
+            </div>
+            <button class="button" onclick="startGame()">Start Game</button>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">High Score</span>
+                    <span class="stat-value" id="highScore">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOverScreen" class="hidden">
+            <h1 id="gameOverTitle">Game Over!</h1>
+            <div class="score-display">
+                Final Score: <span id="finalScore">0</span>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Your Score</span>
+                    <span class="stat-value" id="currentScore">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">High Score</span>
+                    <span class="stat-value" id="highScoreGameOver">0</span>
+                </div>
+            </div>
+            <button class="button" onclick="startGame()">Play Again</button>
+            <button class="button" onclick="backToMenu()">Main Menu</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const tileSize = 20;
+        const cols = 28;
+        const rows = 31;
+
+        let score = 0;
+        let highScore = localStorage.getItem('pacmanHighScore') || 0;
+        let gameState = 'menu';
+        let gameLoop;
+        let isPaused = false;
+        let lives = 3;
+        let dotsEaten = 0;
+        let totalDots = 0;
+        let powerMode = false;
+        let powerModeTimer = 0;
+
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+            [1,3,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,3,1],
+            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+            [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+            [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,1,1,1,0,0,1,1,1,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+            [0,0,0,0,0,0,2,0,0,0,1,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0,0],
+            [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+            [1,3,2,2,1,1,2,2,2,2,2,2,2,0,0,2,2,2,2,2,2,2,1,1,2,2,3,1],
+            [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+            [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+            [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+            [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+            [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let pacman = {
+            x: 14,
+            y: 23,
+            direction: 0,
+            nextDirection: 0,
+            mouthOpen: 0,
+            mouthSpeed: 0.3
+        };
+
+        let ghosts = [
+            { x: 13, y: 11, color: '#ff0000', name: 'Blinky', direction: 0, startX: 13, startY: 11 },
+            { x: 14, y: 14, color: '#ffb8ff', name: 'Pinky', direction: 0, startX: 14, startY: 14 },
+            { x: 12, y: 14, color: '#00ffff', name: 'Inky', direction: 0, startX: 12, startY: 14 },
+            { x: 15, y: 14, color: '#ffb851', name: 'Clyde', direction: 0, startX: 15, startY: 14 }
+        ];
+
+        const directions = {
+            LEFT: 0,
+            RIGHT: 1,
+            UP: 2,
+            DOWN: 3
+        };
+
+        document.getElementById('highScore').textContent = highScore;
+
+        function countDots() {
+            totalDots = 0;
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (map[y][x] === 2 || map[y][x] === 3) {
+                        totalDots++;
+                    }
+                }
+            }
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            resetGame();
+            gameState = 'playing';
+            isPaused = false;
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(update, 1000 / 60);
+        }
+
+        function backToMenu() {
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+            gameState = 'menu';
+            if (gameLoop) clearInterval(gameLoop);
+            drawMenuBackground();
+        }
+
+        let frameCount = 0;
+
+        function update() {
+            if (isPaused) return;
+
+            frameCount++;
+
+            if (frameCount % 8 === 0) {
+                movePacman();
+                moveGhosts();
+                checkCollisions();
+            }
+
+            pacman.mouthOpen += pacman.mouthSpeed;
+            if (pacman.mouthOpen > 0.8 || pacman.mouthOpen < 0) {
+                pacman.mouthSpeed = -pacman.mouthSpeed;
+            }
+
+            if (powerMode) {
+                powerModeTimer--;
+                if (powerModeTimer <= 0) {
+                    powerMode = false;
+                }
+            }
+
+            draw();
+
+            if (dotsEaten >= totalDots) {
+                winGame();
+            }
+        }
+
+        function movePacman() {
+            const newX = pacman.x + getDirectionX(pacman.nextDirection);
+            const newY = pacman.y + getDirectionY(pacman.nextDirection);
+
+            if (canMove(newX, newY)) {
+                pacman.direction = pacman.nextDirection;
+            }
+
+            const moveX = pacman.x + getDirectionX(pacman.direction);
+            const moveY = pacman.y + getDirectionY(pacman.direction);
+
+            if (canMove(moveX, moveY)) {
+                pacman.x = moveX;
+                pacman.y = moveY;
+
+                if (pacman.x < 0) pacman.x = cols - 1;
+                if (pacman.x >= cols) pacman.x = 0;
+
+                const tile = map[pacman.y][pacman.x];
+                if (tile === 2) {
+                    map[pacman.y][pacman.x] = 0;
+                    score += 10;
+                    dotsEaten++;
+                } else if (tile === 3) {
+                    map[pacman.y][pacman.x] = 0;
+                    score += 50;
+                    dotsEaten++;
+                    powerMode = true;
+                    powerModeTimer = 300;
+                }
+
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('pacmanHighScore', highScore);
+                }
+            }
+        }
+
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                const possibleDirections = [];
+
+                for (let dir = 0; dir < 4; dir++) {
+                    const newX = ghost.x + getDirectionX(dir);
+                    const newY = ghost.y + getDirectionY(dir);
+
+                    if (canMove(newX, newY) && dir !== getOppositeDirection(ghost.direction)) {
+                        possibleDirections.push(dir);
+                    }
+                }
+
+                if (possibleDirections.length > 0) {
+                    if (powerMode) {
+                        ghost.direction = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+                    } else {
+                        let bestDir = ghost.direction;
+                        let minDist = Infinity;
+
+                        possibleDirections.forEach(dir => {
+                            const newX = ghost.x + getDirectionX(dir);
+                            const newY = ghost.y + getDirectionY(dir);
+                            const dist = Math.abs(newX - pacman.x) + Math.abs(newY - pacman.y);
+
+                            if (dist < minDist) {
+                                minDist = dist;
+                                bestDir = dir;
+                            }
+                        });
+
+                        ghost.direction = bestDir;
+                    }
+                }
+
+                const newX = ghost.x + getDirectionX(ghost.direction);
+                const newY = ghost.y + getDirectionY(ghost.direction);
+
+                if (canMove(newX, newY)) {
+                    ghost.x = newX;
+                    ghost.y = newY;
+
+                    if (ghost.x < 0) ghost.x = cols - 1;
+                    if (ghost.x >= cols) ghost.x = 0;
+                }
+            });
+        }
+
+        function checkCollisions() {
+            ghosts.forEach((ghost, index) => {
+                if (Math.abs(ghost.x - pacman.x) < 0.5 && Math.abs(ghost.y - pacman.y) < 0.5) {
+                    if (powerMode) {
+                        score += 200;
+                        ghost.x = ghost.startX;
+                        ghost.y = ghost.startY;
+                    } else {
+                        lives--;
+                        if (lives <= 0) {
+                            gameOver();
+                        } else {
+                            resetPositions();
+                        }
+                    }
+                }
+            });
+        }
+
+        function resetPositions() {
+            pacman.x = 14;
+            pacman.y = 23;
+            pacman.direction = 0;
+            pacman.nextDirection = 0;
+
+            ghosts.forEach(ghost => {
+                ghost.x = ghost.startX;
+                ghost.y = ghost.startY;
+                ghost.direction = 0;
+            });
+        }
+
+        function canMove(x, y) {
+            if (x < 0 || x >= cols || y < 0 || y >= rows) {
+                return y === 14;
+            }
+            return map[y][x] !== 1;
+        }
+
+        function getDirectionX(dir) {
+            if (dir === directions.LEFT) return -1;
+            if (dir === directions.RIGHT) return 1;
+            return 0;
+        }
+
+        function getDirectionY(dir) {
+            if (dir === directions.UP) return -1;
+            if (dir === directions.DOWN) return 1;
+            return 0;
+        }
+
+        function getOppositeDirection(dir) {
+            if (dir === directions.LEFT) return directions.RIGHT;
+            if (dir === directions.RIGHT) return directions.LEFT;
+            if (dir === directions.UP) return directions.DOWN;
+            if (dir === directions.DOWN) return directions.UP;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawMap();
+            drawPacman();
+            drawGhosts();
+            drawHUD();
+
+            if (isPaused) {
+                drawPauseScreen();
+            }
+        }
+
+        function drawMap() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const tile = map[y][x];
+                    const px = x * tileSize;
+                    const py = y * tileSize;
+
+                    if (tile === 1) {
+                        ctx.fillStyle = '#2121ff';
+                        ctx.fillRect(px, py, tileSize, tileSize);
+                        ctx.strokeStyle = '#4a4aff';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px + 1, py + 1, tileSize - 2, tileSize - 2);
+                    } else if (tile === 2) {
+                        ctx.fillStyle = '#ffb897';
+                        ctx.beginPath();
+                        ctx.arc(px + tileSize / 2, py + tileSize / 2, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === 3) {
+                        ctx.fillStyle = '#ffb897';
+                        ctx.beginPath();
+                        ctx.arc(px + tileSize / 2, py + tileSize / 2, 5, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(px + tileSize / 2, py + tileSize / 2, 6, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawPacman() {
+            const px = pacman.x * tileSize + tileSize / 2;
+            const py = pacman.y * tileSize + tileSize / 2;
+            const radius = tileSize / 2 - 2;
+
+            const gradient = ctx.createRadialGradient(px - 3, py - 3, 0, px, py, radius);
+            gradient.addColorStop(0, '#ffff00');
+            gradient.addColorStop(1, '#ffaa00');
+            ctx.fillStyle = gradient;
+
+            ctx.beginPath();
+
+            let startAngle, endAngle;
+            const mouthAngle = pacman.mouthOpen * 0.4;
+
+            switch(pacman.direction) {
+                case directions.RIGHT:
+                    startAngle = mouthAngle;
+                    endAngle = 2 * Math.PI - mouthAngle;
+                    break;
+                case directions.LEFT:
+                    startAngle = Math.PI + mouthAngle;
+                    endAngle = Math.PI - mouthAngle;
+                    break;
+                case directions.UP:
+                    startAngle = Math.PI * 1.5 + mouthAngle;
+                    endAngle = Math.PI * 1.5 - mouthAngle;
+                    break;
+                case directions.DOWN:
+                    startAngle = Math.PI * 0.5 + mouthAngle;
+                    endAngle = Math.PI * 0.5 - mouthAngle;
+                    break;
+            }
+
+            ctx.arc(px, py, radius, startAngle, endAngle);
+            ctx.lineTo(px, py);
+            ctx.fill();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                const px = ghost.x * tileSize + tileSize / 2;
+                const py = ghost.y * tileSize + tileSize / 2;
+                const radius = tileSize / 2 - 2;
+
+                if (powerMode) {
+                    const blinkColor = powerModeTimer < 100 && Math.floor(frameCount / 10) % 2 === 0;
+                    ctx.fillStyle = blinkColor ? '#fff' : '#2121de';
+                } else {
+                    const gradient = ctx.createRadialGradient(px - 3, py - 3, 0, px, py, radius);
+                    gradient.addColorStop(0, ghost.color);
+                    gradient.addColorStop(1, adjustBrightness(ghost.color, -30));
+                    ctx.fillStyle = gradient;
+                }
+
+                ctx.beginPath();
+                ctx.arc(px, py - 2, radius, Math.PI, 0, false);
+                ctx.lineTo(px + radius, py + radius);
+                ctx.lineTo(px + radius * 0.6, py + radius - 3);
+                ctx.lineTo(px + radius * 0.2, py + radius);
+                ctx.lineTo(px - radius * 0.2, py + radius);
+                ctx.lineTo(px - radius * 0.6, py + radius - 3);
+                ctx.lineTo(px - radius, py + radius);
+                ctx.closePath();
+                ctx.fill();
+
+                if (powerMode) {
+                    ctx.fillStyle = '#fff';
+                } else {
+                    ctx.fillStyle = '#fff';
+                }
+
+                const eyeOffsetX = getDirectionX(ghost.direction) * 2;
+                const eyeOffsetY = getDirectionY(ghost.direction) * 2;
+
+                ctx.beginPath();
+                ctx.arc(px - 4 + eyeOffsetX, py - 2 + eyeOffsetY, 3, 0, Math.PI * 2);
+                ctx.arc(px + 4 + eyeOffsetX, py - 2 + eyeOffsetY, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (!powerMode) {
+                    ctx.fillStyle = '#2121de';
+                    ctx.beginPath();
+                    ctx.arc(px - 4 + eyeOffsetX, py - 2 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+                    ctx.arc(px + 4 + eyeOffsetX, py - 2 + eyeOffsetY, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        function adjustBrightness(color, amount) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+
+        function drawHUD() {
+            const hudY = rows * tileSize;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, hudY, canvas.width, 20);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px "Press Start 2P"';
+            ctx.fillText('Score: ' + score, 10, hudY + 15);
+
+            ctx.fillStyle = '#ffff00';
+            ctx.fillText('High: ' + highScore, 220, hudY + 15);
+
+            ctx.fillStyle = '#ff0000';
+            for (let i = 0; i < lives; i++) {
+                ctx.beginPath();
+                ctx.arc(460 + i * 20, hudY + 10, 6, 0.2, Math.PI * 2 - 0.2);
+                ctx.lineTo(460 + i * 20, hudY + 10);
+                ctx.fill();
+            }
+
+            if (powerMode) {
+                ctx.fillStyle = powerModeTimer < 100 ? '#ff0000' : '#00ff00';
+                ctx.font = '8px "Press Start 2P"';
+                ctx.fillText('POWER!', canvas.width / 2 - 25, hudY + 15);
+            }
+        }
+
+        function drawPauseScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#ffff00';
+            ctx.font = '24px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+
+            ctx.font = '10px "Press Start 2P"';
+            ctx.fillStyle = '#fff';
+            ctx.fillText('Press SPACE to Resume', canvas.width / 2, canvas.height / 2 + 40);
+            ctx.textAlign = 'left';
+        }
+
+        function drawMenuBackground() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+        }
+
+        function gameOver() {
+            gameState = 'gameOver';
+            clearInterval(gameLoop);
+
+            document.getElementById('gameOverTitle').textContent = 'Game Over!';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('currentScore').textContent = score;
+            document.getElementById('highScoreGameOver').textContent = highScore;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function winGame() {
+            gameState = 'gameOver';
+            clearInterval(gameLoop);
+
+            document.getElementById('gameOverTitle').textContent = 'You Win!';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('currentScore').textContent = score;
+            document.getElementById('highScoreGameOver').textContent = highScore;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            dotsEaten = 0;
+            powerMode = false;
+            powerModeTimer = 0;
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (map[y][x] === 0 && y !== 14) {
+                        const original = [
+                            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                            [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+                            [1,3,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,3,1],
+                            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+                            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                            [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+                            [1,2,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,2,1],
+                            [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+                            [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,1,1,1,0,1,1,0,1,1,1,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,1,1,1,0,0,1,1,1,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+                            [0,0,0,0,0,0,2,0,0,0,1,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0,0],
+                            [1,1,1,1,1,1,2,1,1,0,1,0,0,0,0,0,0,1,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,0,0,0,0,0,0,0,0,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+                            [1,1,1,1,1,1,2,1,1,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1],
+                            [1,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+                            [1,2,1,1,1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1,1,1,2,1],
+                            [1,3,2,2,1,1,2,2,2,2,2,2,2,0,0,2,2,2,2,2,2,2,1,1,2,2,3,1],
+                            [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+                            [1,1,1,2,1,1,2,1,1,2,1,1,1,1,1,1,1,1,2,1,1,2,1,1,2,1,1,1],
+                            [1,2,2,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,1,1,2,2,2,2,2,2,1],
+                            [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+                            [1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1],
+                            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+                            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+                        ];
+                        map[y][x] = original[y][x];
+                    }
+                }
+            }
+
+            countDots();
+            resetPositions();
+            draw();
+        }
+
+        document.addEventListener('keydown', e => {
+            if (gameState !== 'playing') return;
+
+            if (e.key === ' ') {
+                e.preventDefault();
+                isPaused = !isPaused;
+                return;
+            }
+
+            if (isPaused) return;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    pacman.nextDirection = directions.UP;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    pacman.nextDirection = directions.DOWN;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    pacman.nextDirection = directions.LEFT;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    pacman.nextDirection = directions.RIGHT;
+                    break;
+            }
+        });
+
+        countDots();
+        drawMenuBackground();
+    </script>
+</body>
+</html>

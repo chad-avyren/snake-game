@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clash of Clans - Strategy Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, #1a3a0f 0%, #2d5016 25%, #4a7c25 50%, #2d5016 75%, #1a3a0f 100%);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 215, 0, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 30%, rgba(78, 204, 163, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            animation: ambientGlow 10s ease-in-out infinite;
+        }
+
+        @keyframes ambientGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        #topBar {
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #ffd700;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 215, 0, 0.3);
+            z-index: 100;
+            position: relative;
+        }
+
+        .resource {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #ffd700;
+            font-size: 11px;
+            padding: 8px 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            transition: all 0.3s;
+        }
+
+        .resource:hover {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: rgba(255, 215, 0, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .resources {
+            display: flex;
+            gap: 20px;
+        }
+
+        .resource-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+            animation: iconPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .gold {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            box-shadow: 0 2px 10px rgba(255, 215, 0, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+        .elixir {
+            background: linear-gradient(135deg, #e91e63, #ff69b4);
+            box-shadow: 0 2px 10px rgba(233, 30, 99, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+        .trophy {
+            background: linear-gradient(135deg, #00bcd4, #4dd0e1);
+            box-shadow: 0 2px 10px rgba(0, 188, 212, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+        }
+
+        #gameArea {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        #buildMenu {
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 3px solid #ffd700;
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .build-button {
+            background: linear-gradient(45deg, #4a7c25, #6ba337);
+            border: 3px solid #ffd700;
+            padding: 10px 15px;
+            color: white;
+            font-size: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .build-button:hover {
+            background: linear-gradient(45deg, #6ba337, #8bc34a);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);
+        }
+
+        .build-button.active {
+            background: linear-gradient(45deg, #ff9800, #ffc107);
+            border-color: #fff;
+        }
+
+        .build-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cost {
+            color: #ffd700;
+            font-size: 7px;
+            margin-top: 5px;
+        }
+
+        #modeToggle {
+            background: linear-gradient(45deg, #2196f3, #03a9f4);
+            border: 3px solid #ffd700;
+            padding: 12px 25px;
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.2);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #modeToggle::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: rotate(45deg);
+            animation: buttonShine 3s linear infinite;
+        }
+
+        @keyframes buttonShine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        #modeToggle:hover {
+            background: linear-gradient(45deg, #03a9f4, #00bcd4);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.2);
+        }
+
+        #modeToggle.attack {
+            background: linear-gradient(45deg, #f44336, #e91e63);
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.2);
+        }
+
+        #modeToggle.attack:hover {
+            background: linear-gradient(45deg, #e91e63, #f44336);
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.6), inset 0 2px 5px rgba(255, 255, 255, 0.2);
+        }
+
+        #notification {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffd700;
+            padding: 15px 30px;
+            border: 3px solid #ffd700;
+            font-size: 10px;
+            display: none;
+            z-index: 200;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: 50px;
+                opacity: 0;
+            }
+            to {
+                top: 80px;
+                opacity: 1;
+            }
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 3px solid #ffd700;
+            padding: 15px;
+            color: white;
+            font-size: 8px;
+            max-width: 200px;
+            display: none;
+        }
+
+        .info-panel h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 10px;
+        }
+
+        .info-panel button {
+            background: #f44336;
+            border: 2px solid #fff;
+            color: white;
+            padding: 8px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            width: 100%;
+        }
+
+        .info-panel button:hover {
+            background: #e53935;
+        }
+    </style>
+</head>
+<body>
+    <div id="topBar">
+        <div class="resources">
+            <div class="resource">
+                <div class="resource-icon gold">💰</div>
+                <span id="goldAmount">5000</span>
+            </div>
+            <div class="resource">
+                <div class="resource-icon elixir">⚗️</div>
+                <span id="elixirAmount">5000</span>
+            </div>
+            <div class="resource">
+                <div class="resource-icon trophy">🏆</div>
+                <span id="trophyAmount">0</span>
+            </div>
+        </div>
+        <button id="modeToggle" onclick="toggleMode()">🏰 Build Mode</button>
+    </div>
+
+    <div id="gameArea">
+        <canvas id="game"></canvas>
+        <div id="notification"></div>
+        <div id="infoPanel" class="info-panel">
+            <h3 id="infoTitle">Building</h3>
+            <div id="infoContent"></div>
+            <button onclick="deleteBuilding()">Delete (Free)</button>
+        </div>
+    </div>
+
+    <div id="buildMenu">
+        <button class="build-button" onclick="selectBuilding('townhall')">
+            🏰 Town Hall<br>
+            <span class="cost">Gold: 1000</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('goldmine')">
+            💰 Gold Mine<br>
+            <span class="cost">Gold: 500</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('elixirpump')">
+            ⚗️ Elixir Pump<br>
+            <span class="cost">Gold: 500</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('cannon')">
+            🔫 Cannon<br>
+            <span class="cost">Gold: 800</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('archertower')">
+            🏹 Archer Tower<br>
+            <span class="cost">Gold: 1000</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('wall')">
+            🧱 Wall<br>
+            <span class="cost">Gold: 100</span>
+        </button>
+        <button class="build-button" onclick="selectBuilding('barracks')">
+            ⚔️ Barracks<br>
+            <span class="cost">Gold: 1200</span>
+        </button>
+        <button class="build-button" onclick="trainTroop('barbarian')">
+            🧔 Train Barbarian<br>
+            <span class="cost">Elixir: 100</span>
+        </button>
+        <button class="build-button" onclick="trainTroop('archer')">
+            🏹 Train Archer<br>
+            <span class="cost">Elixir: 150</span>
+        </button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 200;
+
+        const gridSize = 40;
+        const cols = Math.floor(canvas.width / gridSize);
+        const rows = Math.floor(canvas.height / gridSize);
+
+        let gameMode = 'build'; // 'build' or 'attack'
+        let selectedBuilding = null;
+        let selectedBuildingObj = null;
+        let gold = 5000;
+        let elixir = 5000;
+        let trophies = 0;
+
+        const buildingTypes = {
+            townhall: { name: 'Town Hall', cost: 1000, resource: 'gold', emoji: '🏰', hp: 1000, size: 3 },
+            goldmine: { name: 'Gold Mine', cost: 500, resource: 'gold', emoji: '💰', hp: 400, produces: 'gold', rate: 10, size: 2 },
+            elixirpump: { name: 'Elixir Pump', cost: 500, resource: 'gold', emoji: '⚗️', hp: 400, produces: 'elixir', rate: 10, size: 2 },
+            cannon: { name: 'Cannon', cost: 800, resource: 'gold', emoji: '🔫', hp: 500, defense: true, damage: 30, range: 5, size: 2 },
+            archertower: { name: 'Archer Tower', cost: 1000, resource: 'gold', emoji: '🏹', hp: 600, defense: true, damage: 20, range: 7, size: 2 },
+            wall: { name: 'Wall', cost: 100, resource: 'gold', emoji: '🧱', hp: 300, size: 1 },
+            barracks: { name: 'Barracks', cost: 1200, resource: 'gold', emoji: '⚔️', hp: 500, size: 3 }
+        };
+
+        let buildings = [];
+        let troops = [];
+        let enemyBuildings = [];
+        let projectiles = [];
+        let particles = [];
+        let explosions = [];
+
+        class Building {
+            constructor(type, x, y) {
+                this.type = type;
+                this.data = buildingTypes[type];
+                this.x = x;
+                this.y = y;
+                this.hp = this.data.hp;
+                this.maxHp = this.data.hp;
+                this.size = this.data.size;
+                this.lastProduce = Date.now();
+                this.storage = 0;
+                this.target = null;
+                this.lastShot = 0;
+            }
+
+            draw() {
+                const px = this.x * gridSize;
+                const py = this.y * gridSize;
+                const size = this.size * gridSize;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(px + 5, py + 5, size, size);
+
+                // Building base with gradient
+                if (this.hp > 0) {
+                    const gradient = ctx.createLinearGradient(px, py, px, py + size);
+                    gradient.addColorStop(0, '#a0522d');
+                    gradient.addColorStop(0.5, '#8b4513');
+                    gradient.addColorStop(1, '#654321');
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+                }
+                ctx.fillRect(px, py, size, size);
+
+                // Building border with 3D effect
+                ctx.strokeStyle = this.hp > 0 ? '#654321' : '#333';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(px, py, size, size);
+
+                // Highlight effect
+                ctx.strokeStyle = this.hp > 0 ? 'rgba(255, 255, 255, 0.3)' : 'rgba(100, 100, 100, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 2, py + 2, size - 4, size - 4);
+
+                // Emoji with shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.font = `${size * 0.6}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.data.emoji, px + size / 2, py + size / 2);
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                // Production animation
+                if (this.data.produces && this.storage > 0) {
+                    const time = Date.now() / 1000;
+                    const bounce = Math.sin(time * 3) * 3;
+
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 12px Press Start 2P';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(Math.floor(this.storage), px + size / 2, py - 25 + bounce);
+                    ctx.fillText(Math.floor(this.storage), px + size / 2, py - 25 + bounce);
+
+                    // Sparkle effect
+                    if (Math.floor(time * 2) % 2 === 0) {
+                        ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                        ctx.beginPath();
+                        ctx.arc(px + size / 2 + 15, py - 20 + bounce, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // HP bar
+                if (this.hp < this.maxHp) {
+                    const barWidth = size;
+                    const barHeight = 6;
+                    const hpPercent = this.hp / this.maxHp;
+
+                    // Background
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(px - 1, py - 12, barWidth + 2, barHeight + 2);
+
+                    // HP gradient
+                    const hpGradient = ctx.createLinearGradient(px, py - 10, px + barWidth, py - 10);
+                    if (hpPercent > 0.5) {
+                        hpGradient.addColorStop(0, '#66bb6a');
+                        hpGradient.addColorStop(1, '#4caf50');
+                    } else if (hpPercent > 0.25) {
+                        hpGradient.addColorStop(0, '#ffa726');
+                        hpGradient.addColorStop(1, '#ff9800');
+                    } else {
+                        hpGradient.addColorStop(0, '#ef5350');
+                        hpGradient.addColorStop(1, '#f44336');
+                    }
+                    ctx.fillStyle = hpGradient;
+                    ctx.fillRect(px, py - 10, barWidth * hpPercent, barHeight);
+
+                    // HP bar border
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(px, py - 10, barWidth, barHeight);
+                }
+            }
+
+            update() {
+                if (this.hp <= 0) return;
+
+                // Resource production
+                if (this.data.produces) {
+                    const now = Date.now();
+                    if (now - this.lastProduce > 1000) {
+                        this.storage += this.data.rate;
+                        this.lastProduce = now;
+                    }
+                }
+
+                // Defense behavior
+                if (this.data.defense && gameMode === 'attack') {
+                    this.findAndAttackTarget();
+                }
+            }
+
+            findAndAttackTarget() {
+                if (!this.target || this.target.hp <= 0 || this.getDistance(this.target) > this.data.range) {
+                    this.target = null;
+
+                    for (let troop of troops) {
+                        if (troop.hp > 0 && this.getDistance(troop) <= this.data.range) {
+                            this.target = troop;
+                            break;
+                        }
+                    }
+                }
+
+                if (this.target && Date.now() - this.lastShot > 1000) {
+                    this.shoot();
+                    this.lastShot = Date.now();
+                }
+            }
+
+            shoot() {
+                if (!this.target) return;
+
+                projectiles.push({
+                    x: this.x * gridSize + (this.size * gridSize) / 2,
+                    y: this.y * gridSize + (this.size * gridSize) / 2,
+                    targetX: this.target.x,
+                    targetY: this.target.y,
+                    target: this.target,
+                    damage: this.data.damage,
+                    speed: 10
+                });
+            }
+
+            getDistance(target) {
+                const dx = Math.abs(this.x - Math.floor(target.x / gridSize));
+                const dy = Math.abs(this.y - Math.floor(target.y / gridSize));
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            collect() {
+                if (this.storage > 0) {
+                    if (this.data.produces === 'gold') {
+                        gold += Math.floor(this.storage);
+                    } else if (this.data.produces === 'elixir') {
+                        elixir += Math.floor(this.storage);
+                    }
+                    this.storage = 0;
+                    updateResources();
+                    showNotification(`Collected ${Math.floor(this.storage)} ${this.data.produces}!`);
+                }
+            }
+        }
+
+        class Troop {
+            constructor(type, x, y) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.targetX = x;
+                this.targetY = y;
+                this.hp = type === 'barbarian' ? 100 : 80;
+                this.maxHp = this.hp;
+                this.damage = type === 'barbarian' ? 15 : 10;
+                this.range = type === 'barbarian' ? 1 : 4;
+                this.speed = type === 'barbarian' ? 2 : 1.5;
+                this.emoji = type === 'barbarian' ? '🧔' : '🏹';
+                this.target = null;
+                this.lastAttack = 0;
+            }
+
+            draw() {
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 20, 15, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Troop with glow
+                const time = Date.now() / 200;
+                const bounce = Math.sin(time + this.x) * 2;
+
+                ctx.shadowColor = this.type === 'barbarian' ? 'rgba(255, 100, 0, 0.5)' : 'rgba(100, 200, 255, 0.5)';
+                ctx.shadowBlur = 10;
+                ctx.font = '35px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, this.x, this.y + bounce);
+                ctx.shadowBlur = 0;
+
+                // HP bar
+                if (this.hp < this.maxHp) {
+                    const barWidth = 35;
+                    const barHeight = 5;
+                    const hpPercent = this.hp / this.maxHp;
+
+                    // Background
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(this.x - barWidth / 2 - 1, this.y - 28, barWidth + 2, barHeight + 2);
+
+                    // HP gradient
+                    const hpGradient = ctx.createLinearGradient(this.x - barWidth / 2, this.y - 26, this.x + barWidth / 2, this.y - 26);
+                    if (hpPercent > 0.5) {
+                        hpGradient.addColorStop(0, '#66bb6a');
+                        hpGradient.addColorStop(1, '#4caf50');
+                    } else if (hpPercent > 0.25) {
+                        hpGradient.addColorStop(0, '#ffa726');
+                        hpGradient.addColorStop(1, '#ff9800');
+                    } else {
+                        hpGradient.addColorStop(0, '#ef5350');
+                        hpGradient.addColorStop(1, '#f44336');
+                    }
+                    ctx.fillStyle = hpGradient;
+                    ctx.fillRect(this.x - barWidth / 2, this.y - 26, barWidth * hpPercent, barHeight);
+
+                    // Border
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(this.x - barWidth / 2, this.y - 26, barWidth, barHeight);
+                }
+            }
+
+            update() {
+                if (this.hp <= 0) return;
+
+                // Find target
+                if (!this.target || this.target.hp <= 0) {
+                    this.findTarget();
+                }
+
+                if (this.target) {
+                    const targetX = this.target.x * gridSize + (this.target.size * gridSize) / 2;
+                    const targetY = this.target.y * gridSize + (this.target.size * gridSize) / 2;
+                    const dx = targetX - this.x;
+                    const dy = targetY - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist > this.range * gridSize) {
+                        // Move towards target
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                    } else {
+                        // Attack
+                        if (Date.now() - this.lastAttack > 1000) {
+                            this.attack();
+                            this.lastAttack = Date.now();
+                        }
+                    }
+                }
+            }
+
+            findTarget() {
+                let closest = null;
+                let closestDist = Infinity;
+
+                for (let building of buildings) {
+                    if (building.hp <= 0) continue;
+
+                    const bx = building.x * gridSize + (building.size * gridSize) / 2;
+                    const by = building.y * gridSize + (building.size * gridSize) / 2;
+                    const dx = bx - this.x;
+                    const dy = by - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closest = building;
+                    }
+                }
+
+                this.target = closest;
+            }
+
+            attack() {
+                if (!this.target) return;
+
+                this.target.hp -= this.damage;
+
+                if (this.target.hp <= 0) {
+                    this.target.hp = 0;
+                    trophies += 5;
+                    updateResources();
+                }
+
+                // Create attack effect
+                if (this.type === 'archer') {
+                    projectiles.push({
+                        x: this.x,
+                        y: this.y,
+                        targetX: this.target.x * gridSize + (this.target.size * gridSize) / 2,
+                        targetY: this.target.y * gridSize + (this.target.size * gridSize) / 2,
+                        target: this.target,
+                        damage: 0,
+                        speed: 15,
+                        color: '#ff9800'
+                    });
+                }
+            }
+        }
+
+        function draw() {
+            // Background with gradient
+            const bgGradient = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
+            bgGradient.addColorStop(0, '#5a8c2f');
+            bgGradient.addColorStop(0.5, '#4a7c25');
+            bgGradient.addColorStop(1, '#3a6c1f');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grass texture effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            // Grid with enhanced style
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= cols; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * gridSize, 0);
+                ctx.lineTo(x * gridSize, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= rows; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * gridSize);
+                ctx.lineTo(canvas.width, y * gridSize);
+                ctx.stroke();
+            }
+
+            // Buildings
+            buildings.forEach(b => b.draw());
+
+            // Troops with shadow
+            troops.forEach(t => t.draw());
+
+            // Particles
+            particles.forEach((p, i) => {
+                p.life--;
+                p.y += p.vy;
+                p.x += p.vx;
+                p.alpha -= 0.02;
+
+                if (p.life <= 0 || p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+
+            // Projectiles with trail
+            projectiles.forEach((p, i) => {
+                const dx = p.targetX - p.x;
+                const dy = p.targetY - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < p.speed) {
+                    if (p.target && p.damage > 0) {
+                        p.target.hp -= p.damage;
+                        createExplosion(p.x, p.y, p.color || '#ff0000');
+                    }
+                    projectiles.splice(i, 1);
+                } else {
+                    p.x += (dx / dist) * p.speed;
+                    p.y += (dy / dist) * p.speed;
+
+                    // Trail effect
+                    for (let j = 0; j < 3; j++) {
+                        particles.push({
+                            x: p.x - (dx / dist) * j * 5,
+                            y: p.y - (dy / dist) * j * 5,
+                            vx: 0,
+                            vy: 0,
+                            size: 3 - j,
+                            color: p.color || '#ff0000',
+                            alpha: 0.5 - j * 0.15,
+                            life: 10
+                        });
+                    }
+
+                    // Projectile with glow
+                    ctx.shadowColor = p.color || '#ff0000';
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = p.color || '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Inner glow
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            // Preview with animation
+            if (selectedBuilding && gameMode === 'build') {
+                const mouseX = Math.floor(lastMouseX / gridSize);
+                const mouseY = Math.floor(lastMouseY / gridSize);
+                const size = buildingTypes[selectedBuilding].size;
+                const time = Date.now() / 500;
+                const alpha = 0.3 + Math.sin(time) * 0.1;
+
+                ctx.fillStyle = `rgba(76, 175, 80, ${alpha})`;
+                ctx.fillRect(mouseX * gridSize, mouseY * gridSize, size * gridSize, size * gridSize);
+                ctx.strokeStyle = '#4caf50';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(mouseX * gridSize, mouseY * gridSize, size * gridSize, size * gridSize);
+                ctx.setLineDash([]);
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                const angle = (Math.PI * 2 * i) / 15;
+                const speed = 2 + Math.random() * 3;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 3 + Math.random() * 3,
+                    color: color,
+                    alpha: 1,
+                    life: 30 + Math.random() * 20
+                });
+            }
+        }
+
+        function update() {
+            buildings.forEach(b => b.update());
+            troops.forEach(t => t.update());
+
+            // Remove dead troops
+            troops = troops.filter(t => t.hp > 0);
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        canvas.addEventListener('mousemove', e => {
+            lastMouseX = e.offsetX;
+            lastMouseY = e.offsetY;
+        });
+
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const gridX = Math.floor(x / gridSize);
+            const gridY = Math.floor(y / gridSize);
+
+            if (gameMode === 'build' && selectedBuilding) {
+                placeBuilding(selectedBuilding, gridX, gridY);
+            } else if (gameMode === 'attack') {
+                deployTroop(x, y);
+            } else {
+                // Check if clicked on building
+                const clicked = buildings.find(b =>
+                    gridX >= b.x && gridX < b.x + b.size &&
+                    gridY >= b.y && gridY < b.y + b.size
+                );
+
+                if (clicked) {
+                    if (clicked.data.produces && clicked.storage > 0) {
+                        clicked.collect();
+                    }
+                    showBuildingInfo(clicked);
+                } else {
+                    hideBuildingInfo();
+                }
+            }
+        });
+
+        function placeBuilding(type, x, y) {
+            const data = buildingTypes[type];
+
+            // Check if can afford
+            if (data.resource === 'gold' && gold < data.cost) {
+                showNotification('Not enough gold!');
+                return;
+            }
+
+            // Check if space is available
+            for (let building of buildings) {
+                if (!(x + data.size <= building.x || x >= building.x + building.size ||
+                      y + data.size <= building.y || y >= building.y + building.size)) {
+                    showNotification('Cannot place here!');
+                    return;
+                }
+            }
+
+            // Place building
+            if (data.resource === 'gold') {
+                gold -= data.cost;
+            }
+
+            buildings.push(new Building(type, x, y));
+            updateResources();
+            showNotification(`${data.name} placed!`);
+
+            // Create placement particles
+            const centerX = (x + data.size / 2) * gridSize;
+            const centerY = (y + data.size / 2) * gridSize;
+            createExplosion(centerX, centerY, '#4caf50');
+
+            selectedBuilding = null;
+            updateBuildButtons();
+        }
+
+        function selectBuilding(type) {
+            if (gameMode !== 'build') return;
+            selectedBuilding = selectedBuilding === type ? null : type;
+            updateBuildButtons();
+        }
+
+        function updateBuildButtons() {
+            document.querySelectorAll('.build-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            if (selectedBuilding) {
+                event.target.classList.add('active');
+            }
+        }
+
+        function toggleMode() {
+            gameMode = gameMode === 'build' ? 'attack' : 'build';
+            const btn = document.getElementById('modeToggle');
+
+            if (gameMode === 'attack') {
+                btn.textContent = '⚔️ Attack Mode';
+                btn.classList.add('attack');
+                showNotification('Click to deploy troops!');
+            } else {
+                btn.textContent = '🏰 Build Mode';
+                btn.classList.remove('attack');
+                troops = [];
+                showNotification('Build your base!');
+            }
+
+            selectedBuilding = null;
+            updateBuildButtons();
+        }
+
+        function trainTroop(type) {
+            const cost = type === 'barbarian' ? 100 : 150;
+
+            // Check barracks
+            const hasBarracks = buildings.some(b => b.type === 'barracks' && b.hp > 0);
+            if (!hasBarracks) {
+                showNotification('Build a Barracks first!');
+                return;
+            }
+
+            if (elixir < cost) {
+                showNotification('Not enough elixir!');
+                return;
+            }
+
+            elixir -= cost;
+            updateResources();
+            showNotification(`${type === 'barbarian' ? 'Barbarian' : 'Archer'} trained! Switch to Attack Mode to deploy.`);
+        }
+
+        function deployTroop(x, y) {
+            // Deploy barbarian if available
+            if (elixir >= 100) {
+                const type = Math.random() > 0.5 ? 'barbarian' : 'archer';
+                troops.push(new Troop(type, x, y));
+                showNotification(`${type === 'barbarian' ? 'Barbarian' : 'Archer'} deployed!`);
+            } else {
+                showNotification('Train troops first!');
+            }
+        }
+
+        function updateResources() {
+            document.getElementById('goldAmount').textContent = gold;
+            document.getElementById('elixirAmount').textContent = elixir;
+            document.getElementById('trophyAmount').textContent = trophies;
+        }
+
+        function showNotification(message) {
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.style.display = 'block';
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 2000);
+        }
+
+        function showBuildingInfo(building) {
+            selectedBuildingObj = building;
+            const panel = document.getElementById('infoPanel');
+            const title = document.getElementById('infoTitle');
+            const content = document.getElementById('infoContent');
+
+            title.textContent = building.data.name;
+            content.innerHTML = `
+                HP: ${Math.floor(building.hp)}/${building.maxHp}<br>
+                ${building.data.defense ? `Damage: ${building.data.damage}<br>Range: ${building.data.range}<br>` : ''}
+                ${building.data.produces ? `Produces: ${building.data.produces}<br>Rate: ${building.data.rate}/s<br>Storage: ${Math.floor(building.storage)}` : ''}
+            `;
+
+            panel.style.display = 'block';
+        }
+
+        function hideBuildingInfo() {
+            document.getElementById('infoPanel').style.display = 'none';
+            selectedBuildingObj = null;
+        }
+
+        function deleteBuilding() {
+            if (selectedBuildingObj) {
+                buildings = buildings.filter(b => b !== selectedBuildingObj);
+                hideBuildingInfo();
+                showNotification('Building deleted!');
+            }
+        }
+
+        // Initialize with starter buildings
+        buildings.push(new Building('townhall', 5, 3));
+        buildings.push(new Building('goldmine', 8, 3));
+        buildings.push(new Building('elixirpump', 8, 5));
+
+        update();
+    </script>
+</body>
+</html>
