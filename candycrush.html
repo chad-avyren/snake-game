@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Candy Crush - Match 3 Puzzle</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 10% 20%, rgba(255,255,255,0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255,255,255,0.1) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%);
+            animation: bgFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(-10%, -10%) rotate(0deg); }
+            50% { transform: translate(0%, 0%) rotate(5deg); }
+        }
+
+        #gameWrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            padding: 15px 40px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+            border-radius: 50px;
+            box-shadow:
+                0 10px 40px rgba(0,0,0,0.2),
+                0 0 0 4px rgba(255,255,255,0.5),
+                inset 0 2px 0 rgba(255,255,255,1);
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: #9b59b6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-family: 'Fredoka One', cursive;
+            font-size: 28px;
+            color: #2c3e50;
+            text-shadow: 2px 2px 0 rgba(255,255,255,0.5);
+        }
+
+        #title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 36px;
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a24 50%, #f9ca24 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            filter: drop-shadow(2px 4px 0 rgba(0,0,0,0.2));
+        }
+
+        #gameContainer {
+            position: relative;
+            padding: 15px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            border-radius: 20px;
+            box-shadow:
+                0 20px 60px rgba(0,0,0,0.3),
+                0 0 0 5px rgba(255,255,255,0.5),
+                inset 0 2px 0 rgba(255,255,255,1);
+        }
+
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 4px;
+            background: linear-gradient(180deg, #2c3e50 0%, #1a252f 100%);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow:
+                inset 0 5px 20px rgba(0,0,0,0.5),
+                0 0 0 3px rgba(255,255,255,0.3);
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .cell.selected {
+            animation: selectedPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes selectedPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(255,255,255,0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 20px 5px rgba(255,255,255,0.8); }
+        }
+
+        .candy {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            transition: all 0.2s ease-out;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .candy.falling {
+            transition: top 0.3s ease-in;
+        }
+
+        .candy.swapping {
+            transition: all 0.2s ease-in-out;
+            z-index: 10;
+        }
+
+        .candy.matched {
+            animation: matchPop 0.3s ease-out forwards !important;
+        }
+
+        .candy.orange.matched {
+            animation: matchPopOrange 0.3s ease-out forwards !important;
+        }
+
+        @keyframes matchPop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        @keyframes matchPopOrange {
+            0% { transform: rotate(45deg) scale(1); opacity: 1; }
+            50% { transform: rotate(45deg) scale(1.3); opacity: 0.8; }
+            100% { transform: rotate(45deg) scale(0); opacity: 0; }
+        }
+
+        /* Red Jelly Bean - oval shaped */
+        .candy.red {
+            width: 44px;
+            height: 48px;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            background: linear-gradient(160deg, #ff8a8a 0%, #ff6b6b 20%, #e74c3c 50%, #c0392b 80%, #a93226 100%);
+            box-shadow:
+                0 6px 20px rgba(231, 76, 60, 0.6),
+                inset 0 -8px 15px rgba(0,0,0,0.3),
+                inset 0 8px 15px rgba(255,255,255,0.4),
+                inset 5px 0 10px rgba(255,255,255,0.2);
+        }
+        .candy.red::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 8px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            top: 8px;
+            left: 8px;
+            transform: rotate(-30deg);
+        }
+
+        /* Orange Lozenge - diamond-ish rounded */
+        .candy.orange {
+            width: 46px;
+            height: 46px;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            background: linear-gradient(135deg, #ffb347 0%, #ff9f43 25%, #ff7f50 50%, #e67e22 75%, #d35400 100%);
+            box-shadow:
+                0 6px 20px rgba(230, 126, 34, 0.6),
+                inset 0 -8px 15px rgba(0,0,0,0.25),
+                inset 0 8px 15px rgba(255,255,255,0.5),
+                inset 5px 0 10px rgba(255,255,255,0.2);
+            transform: rotate(45deg);
+        }
+        .candy.orange::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 6px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            top: 10px;
+            left: 10px;
+            transform: rotate(-45deg);
+        }
+
+        /* Yellow Lemon Drop - teardrop shape */
+        .candy.yellow {
+            width: 42px;
+            height: 48px;
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            background: linear-gradient(160deg, #fff9c4 0%, #ffee58 20%, #fdd835 50%, #f9a825 80%, #f57f17 100%);
+            box-shadow:
+                0 6px 20px rgba(241, 196, 15, 0.6),
+                inset 0 -8px 15px rgba(0,0,0,0.2),
+                inset 0 10px 20px rgba(255,255,255,0.6),
+                inset 5px 0 10px rgba(255,255,255,0.3);
+        }
+        .candy.yellow::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 10px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 50%;
+            top: 6px;
+            left: 6px;
+            transform: rotate(-20deg);
+        }
+        .candy.yellow::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 4px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            top: 14px;
+            left: 18px;
+        }
+
+        /* Green Apple - apple-like shape */
+        .candy.green {
+            width: 44px;
+            height: 46px;
+            border-radius: 45% 45% 50% 50% / 40% 40% 60% 60%;
+            background: linear-gradient(160deg, #a8e6cf 0%, #55efc4 20%, #00b894 50%, #27ae60 80%, #1e8449 100%);
+            box-shadow:
+                0 6px 20px rgba(39, 174, 96, 0.6),
+                inset 0 -8px 15px rgba(0,0,0,0.25),
+                inset 0 8px 15px rgba(255,255,255,0.4),
+                inset 5px 0 10px rgba(255,255,255,0.2);
+        }
+        .candy.green::before {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 10px;
+            background: linear-gradient(to bottom, #8b4513, #5d4037);
+            border-radius: 2px;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%) rotate(10deg);
+        }
+        .candy.green::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 6px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            top: 8px;
+            left: 8px;
+            transform: rotate(-30deg);
+        }
+
+        /* Blue Wrapped Candy - rectangle with twisted ends */
+        .candy.blue {
+            width: 48px;
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #81d4fa 0%, #4fc3f7 20%, #29b6f6 40%, #0288d1 70%, #01579b 100%);
+            box-shadow:
+                0 6px 20px rgba(41, 128, 185, 0.6),
+                inset 0 -6px 12px rgba(0,0,0,0.3),
+                inset 0 6px 12px rgba(255,255,255,0.4);
+            position: relative;
+        }
+        .candy.blue::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 24px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 0 0 8px 8px;
+            border-left: 3px solid rgba(0,0,0,0.1);
+            clip-path: polygon(100% 20%, 100% 80%, 0% 100%, 0% 0%);
+        }
+        .candy.blue::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 24px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 0 0 8px 8px;
+            border-right: 3px solid rgba(0,0,0,0.1);
+            clip-path: polygon(0% 20%, 0% 80%, 100% 100%, 100% 0%);
+        }
+
+        /* Purple Grape cluster - bumpy grape shape */
+        .candy.purple {
+            width: 46px;
+            height: 46px;
+            background: radial-gradient(circle at 30% 30%, #d4a5ff 0%, #a29bfe 20%, #6c5ce7 50%, #5b4cdb 80%, #4834d4 100%);
+            border-radius: 50%;
+            box-shadow:
+                0 6px 20px rgba(142, 68, 173, 0.6),
+                inset 0 -8px 15px rgba(0,0,0,0.3),
+                inset 0 8px 15px rgba(255,255,255,0.3),
+                12px 12px 0 -6px #7c3aed,
+                -10px 10px 0 -8px #8b5cf6,
+                10px -8px 0 -8px #a78bfa;
+        }
+        .candy.purple::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 8px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            top: 8px;
+            left: 10px;
+            transform: rotate(-20deg);
+        }
+        .candy.purple::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 8px;
+            background: linear-gradient(to bottom, #4a5568, #2d3748);
+            border-radius: 2px;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Special candies - Striped horizontal */
+        .candy.striped-h {
+            overflow: visible;
+        }
+        .candy.striped-h .stripes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            pointer-events: none;
+        }
+        .candy.striped-h .stripes span {
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 20%, rgba(255,255,255,0.9) 80%, transparent 100%);
+            border-radius: 2px;
+        }
+
+        /* Special candies - Striped vertical */
+        .candy.striped-v {
+            overflow: visible;
+        }
+        .candy.striped-v .stripes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 4px;
+            pointer-events: none;
+        }
+        .candy.striped-v .stripes span {
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.9) 20%, rgba(255,255,255,0.9) 80%, transparent 100%);
+            border-radius: 2px;
+        }
+
+        /* Wrapped candy - glowing ring effect */
+        .candy.wrapped {
+            animation: wrappedGlow 1s ease-in-out infinite !important;
+        }
+        .candy.wrapped .wrapper {
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            border: 4px solid rgba(255,255,255,0.8);
+            border-radius: inherit;
+            animation: wrapperSpin 2s linear infinite;
+            pointer-events: none;
+        }
+        .candy.wrapped .wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 2px dashed rgba(255,255,255,0.5);
+            border-radius: inherit;
+        }
+
+        @keyframes wrappedGlow {
+            0%, 100% {
+                filter: brightness(1) drop-shadow(0 0 8px rgba(255,255,255,0.6));
+            }
+            50% {
+                filter: brightness(1.2) drop-shadow(0 0 15px rgba(255,255,255,0.9));
+            }
+        }
+
+        @keyframes wrapperSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Color Bomb - chocolate ball with sprinkles */
+        .candy.color-bomb {
+            width: 48px !important;
+            height: 48px !important;
+            border-radius: 50% !important;
+            background: radial-gradient(circle at 35% 35%, #8b6914 0%, #5d4418 30%, #3d2914 60%, #2a1a0a 100%) !important;
+            box-shadow:
+                0 6px 25px rgba(0,0,0,0.7),
+                inset 0 -10px 20px rgba(0,0,0,0.5),
+                inset 0 10px 20px rgba(255,255,255,0.2),
+                inset 3px 3px 10px rgba(255,255,255,0.3) !important;
+            animation: colorBombShine 3s ease-in-out infinite !important;
+            transform: none !important;
+        }
+        .candy.color-bomb::before {
+            content: '' !important;
+            position: absolute !important;
+            width: 8px !important;
+            height: 8px !important;
+            background: #ff6b6b !important;
+            border-radius: 50% !important;
+            top: 8px !important;
+            left: 12px !important;
+            box-shadow:
+                12px 4px 0 #ffd93d,
+                6px 14px 0 #6bcb77,
+                16px 16px 0 #4d96ff,
+                -2px 20px 0 #ff6b6b,
+                20px 8px 0 #9b59b6 !important;
+        }
+        .candy.color-bomb::after {
+            content: '✨' !important;
+            position: absolute !important;
+            font-size: 16px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8) !important;
+            animation: sparkleRotate 1s ease-in-out infinite !important;
+            background: none !important;
+            border: none !important;
+            width: auto !important;
+            height: auto !important;
+            border-radius: 0 !important;
+            clip-path: none !important;
+        }
+
+        @keyframes colorBombShine {
+            0%, 100% {
+                filter: brightness(1);
+                transform: scale(1);
+            }
+            50% {
+                filter: brightness(1.3);
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes sparkleRotate {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.2); }
+        }
+
+        /* Score popup */
+        .score-popup {
+            position: absolute;
+            font-family: 'Fredoka One', cursive;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.3), 0 0 10px currentColor;
+            pointer-events: none;
+            animation: scoreFloat 1s ease-out forwards;
+            z-index: 100;
+        }
+
+        @keyframes scoreFloat {
+            0% { transform: translateY(0) scale(0.5); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+        }
+
+        /* Combo text */
+        #comboText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Fredoka One', cursive;
+            font-size: 48px;
+            color: #fff;
+            text-shadow:
+                3px 3px 0 #e74c3c,
+                6px 6px 0 rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        #comboText.show {
+            animation: comboShow 0.8s ease-out forwards;
+        }
+
+        @keyframes comboShow {
+            0% { transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.3) rotate(5deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0; }
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particleFly 0.6s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+
+        /* Bottom controls */
+        #controls {
+            display: flex;
+            gap: 20px;
+        }
+
+        .btn {
+            font-family: 'Fredoka One', cursive;
+            font-size: 18px;
+            padding: 15px 35px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            box-shadow:
+                0 6px 0 #c0392b,
+                0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 9px 0 #c0392b,
+                0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(3px);
+            box-shadow:
+                0 3px 0 #c0392b,
+                0 5px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, #a29bfe 0%, #6c5ce7 100%);
+            color: white;
+            box-shadow:
+                0 6px 0 #5b4cdb,
+                0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 9px 0 #5b4cdb,
+                0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Level complete overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #overlay.show {
+            display: flex;
+        }
+
+        .overlay-content {
+            background: linear-gradient(180deg, #fff 0%, #f8f9fa 100%);
+            padding: 40px 60px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow:
+                0 20px 60px rgba(0,0,0,0.5),
+                0 0 0 5px rgba(255,255,255,0.3);
+            animation: overlayPop 0.5s ease-out;
+        }
+
+        @keyframes overlayPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .overlay-content h2 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a24 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .overlay-content .final-score {
+            font-family: 'Fredoka One', cursive;
+            font-size: 64px;
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .star {
+            font-size: 50px;
+            color: #ddd;
+            transition: all 0.3s;
+        }
+
+        .star.filled {
+            color: #f1c40f;
+            text-shadow: 0 0 20px rgba(241, 196, 15, 0.8);
+            animation: starPop 0.5s ease-out;
+        }
+
+        @keyframes starPop {
+            0% { transform: scale(0) rotate(-180deg); }
+            70% { transform: scale(1.3) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* Hint animation */
+        .candy.hint {
+            animation: hintPulse 0.5s ease-in-out infinite !important;
+        }
+
+        .candy.orange.hint {
+            animation: hintPulseOrange 0.5s ease-in-out infinite !important;
+        }
+
+        @keyframes hintPulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.15); filter: brightness(1.3); }
+        }
+
+        @keyframes hintPulseOrange {
+            0%, 100% { transform: rotate(45deg) scale(1); filter: brightness(1); }
+            50% { transform: rotate(45deg) scale(1.15); filter: brightness(1.3); }
+        }
+
+        /* Progress bar */
+        #progressContainer {
+            width: 100%;
+            height: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        #progressBar {
+            height: 100%;
+            background: linear-gradient(90deg, #f1c40f 0%, #e67e22 50%, #e74c3c 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease-out;
+            box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+
+        #targetScore {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameWrapper">
+        <div id="header">
+            <div class="stat-box">
+                <span class="stat-label">Score</span>
+                <span class="stat-value" id="score">0</span>
+            </div>
+            <div id="title">Candy Crush</div>
+            <div class="stat-box">
+                <span class="stat-label">Moves</span>
+                <span class="stat-value" id="moves">30</span>
+            </div>
+        </div>
+
+        <div id="gameContainer">
+            <div id="gameBoard"></div>
+            <div id="comboText"></div>
+            <div id="progressContainer">
+                <div id="progressBar" style="width: 0%"></div>
+            </div>
+            <div id="targetScore">Target: 5,000 points</div>
+        </div>
+
+        <div id="controls">
+            <button class="btn btn-secondary" onclick="showHint()">Hint</button>
+            <button class="btn btn-primary" onclick="resetGame()">New Game</button>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div class="overlay-content">
+            <h2 id="overlayTitle">Level Complete!</h2>
+            <div class="star-rating">
+                <span class="star" id="star1">★</span>
+                <span class="star" id="star2">★</span>
+                <span class="star" id="star3">★</span>
+            </div>
+            <div class="final-score" id="finalScore">0</div>
+            <p style="color: #666; margin-bottom: 20px;">Points</p>
+            <button class="btn btn-primary" onclick="resetGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 8;
+        const COLS = 8;
+        const CANDY_TYPES = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
+        const TARGET_SCORE = 5000;
+
+        let board = [];
+        let selectedCandy = null;
+        let score = 0;
+        let moves = 30;
+        let isAnimating = false;
+        let comboCount = 0;
+
+        const gameBoard = document.getElementById('gameBoard');
+
+        function init() {
+            createBoard();
+            renderBoard();
+            updateUI();
+        }
+
+        function createBoard() {
+            board = [];
+            for (let row = 0; row < ROWS; row++) {
+                board[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    let type;
+                    do {
+                        type = CANDY_TYPES[Math.floor(Math.random() * CANDY_TYPES.length)];
+                    } while (wouldMatch(row, col, type));
+
+                    board[row][col] = { type, special: null };
+                }
+            }
+        }
+
+        function wouldMatch(row, col, type) {
+            // Check horizontal
+            if (col >= 2 &&
+                board[row][col-1]?.type === type &&
+                board[row][col-2]?.type === type) {
+                return true;
+            }
+            // Check vertical
+            if (row >= 2 &&
+                board[row-1]?.[col]?.type === type &&
+                board[row-2]?.[col]?.type === type) {
+                return true;
+            }
+            return false;
+        }
+
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    if (board[row][col]) {
+                        const candy = createCandyElement(board[row][col], row, col);
+                        cell.appendChild(candy);
+                    }
+
+                    cell.addEventListener('click', () => handleClick(row, col));
+                    cell.addEventListener('mousedown', (e) => handleDragStart(e, row, col));
+
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function createCandyElement(candyData, row, col) {
+            const candy = document.createElement('div');
+            candy.className = `candy ${candyData.type}`;
+
+            if (candyData.special) {
+                candy.classList.add(candyData.special);
+
+                // Add stripe elements for striped candies
+                if (candyData.special === 'striped-h' || candyData.special === 'striped-v') {
+                    const stripes = document.createElement('div');
+                    stripes.className = 'stripes';
+                    for (let i = 0; i < 3; i++) {
+                        stripes.appendChild(document.createElement('span'));
+                    }
+                    candy.appendChild(stripes);
+                }
+
+                // Add wrapper element for wrapped candies
+                if (candyData.special === 'wrapped') {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'wrapper';
+                    candy.appendChild(wrapper);
+                }
+            }
+
+            candy.dataset.row = row;
+            candy.dataset.col = col;
+
+            return candy;
+        }
+
+        function handleClick(row, col) {
+            if (isAnimating || !board[row][col]) return;
+
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+
+            if (selectedCandy) {
+                const { row: sRow, col: sCol } = selectedCandy;
+
+                // Check if adjacent
+                if (isAdjacent(row, col, sRow, sCol)) {
+                    swapCandies(row, col, sRow, sCol);
+                } else {
+                    // Deselect and select new
+                    deselectCandy();
+                    selectCandy(row, col, cell);
+                }
+            } else {
+                selectCandy(row, col, cell);
+            }
+        }
+
+        let dragStart = null;
+
+        function handleDragStart(e, row, col) {
+            if (isAnimating || !board[row][col]) return;
+            dragStart = { row, col, x: e.clientX, y: e.clientY };
+
+            document.addEventListener('mouseup', handleDragEnd);
+            document.addEventListener('mousemove', handleDragMove);
+        }
+
+        function handleDragMove(e) {
+            if (!dragStart) return;
+
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+            const threshold = 30;
+
+            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                let targetRow = dragStart.row;
+                let targetCol = dragStart.col;
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    targetCol += dx > 0 ? 1 : -1;
+                } else {
+                    targetRow += dy > 0 ? 1 : -1;
+                }
+
+                if (targetRow >= 0 && targetRow < ROWS && targetCol >= 0 && targetCol < COLS) {
+                    swapCandies(dragStart.row, dragStart.col, targetRow, targetCol);
+                }
+
+                dragStart = null;
+                document.removeEventListener('mouseup', handleDragEnd);
+                document.removeEventListener('mousemove', handleDragMove);
+            }
+        }
+
+        function handleDragEnd() {
+            dragStart = null;
+            document.removeEventListener('mouseup', handleDragEnd);
+            document.removeEventListener('mousemove', handleDragMove);
+        }
+
+        function selectCandy(row, col, cell) {
+            selectedCandy = { row, col };
+            cell.classList.add('selected');
+        }
+
+        function deselectCandy() {
+            if (selectedCandy) {
+                const cell = document.querySelector(`.cell[data-row="${selectedCandy.row}"][data-col="${selectedCandy.col}"]`);
+                if (cell) cell.classList.remove('selected');
+                selectedCandy = null;
+            }
+        }
+
+        function isAdjacent(r1, c1, r2, c2) {
+            return (Math.abs(r1 - r2) === 1 && c1 === c2) ||
+                   (Math.abs(c1 - c2) === 1 && r1 === r2);
+        }
+
+        async function swapCandies(r1, c1, r2, c2) {
+            if (isAnimating) return;
+            isAnimating = true;
+            deselectCandy();
+
+            // Visual swap animation
+            await animateSwap(r1, c1, r2, c2);
+
+            // Actual swap
+            const temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+
+            // Check for matches
+            const matches = findAllMatches();
+
+            if (matches.length > 0) {
+                moves--;
+                comboCount = 0;
+                await processMatches(matches);
+                updateUI();
+                checkGameEnd();
+            } else {
+                // Swap back
+                await animateSwap(r1, c1, r2, c2);
+                const temp2 = board[r1][c1];
+                board[r1][c1] = board[r2][c2];
+                board[r2][c2] = temp2;
+                renderBoard();
+            }
+
+            isAnimating = false;
+        }
+
+        function animateSwap(r1, c1, r2, c2) {
+            return new Promise(resolve => {
+                const candy1 = document.querySelector(`.cell[data-row="${r1}"][data-col="${c1}"] .candy`);
+                const candy2 = document.querySelector(`.cell[data-row="${r2}"][data-col="${c2}"] .candy`);
+
+                if (candy1 && candy2) {
+                    const dx = (c2 - c1) * 64;
+                    const dy = (r2 - r1) * 64;
+
+                    candy1.classList.add('swapping');
+                    candy2.classList.add('swapping');
+
+                    candy1.style.transform = `translate(${dx}px, ${dy}px)`;
+                    candy2.style.transform = `translate(${-dx}px, ${-dy}px)`;
+                }
+
+                setTimeout(() => {
+                    renderBoard();
+                    resolve();
+                }, 200);
+            });
+        }
+
+        function findAllMatches() {
+            const matches = [];
+            const matched = new Set();
+
+            // Check horizontal matches
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS - 2; col++) {
+                    if (!board[row][col]) continue;
+
+                    const type = board[row][col].type;
+                    let matchLength = 1;
+
+                    while (col + matchLength < COLS &&
+                           board[row][col + matchLength]?.type === type) {
+                        matchLength++;
+                    }
+
+                    if (matchLength >= 3) {
+                        const match = [];
+                        for (let i = 0; i < matchLength; i++) {
+                            match.push({ row, col: col + i });
+                            matched.add(`${row},${col + i}`);
+                        }
+                        matches.push({ cells: match, type, direction: 'horizontal' });
+                        col += matchLength - 1;
+                    }
+                }
+            }
+
+            // Check vertical matches
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS - 2; row++) {
+                    if (!board[row][col]) continue;
+
+                    const type = board[row][col].type;
+                    let matchLength = 1;
+
+                    while (row + matchLength < ROWS &&
+                           board[row + matchLength]?.[col]?.type === type) {
+                        matchLength++;
+                    }
+
+                    if (matchLength >= 3) {
+                        const match = [];
+                        for (let i = 0; i < matchLength; i++) {
+                            match.push({ row: row + i, col });
+                            matched.add(`${row + i},${col}`);
+                        }
+                        matches.push({ cells: match, type, direction: 'vertical' });
+                        row += matchLength - 1;
+                    }
+                }
+            }
+
+            return matches;
+        }
+
+        async function processMatches(matches) {
+            comboCount++;
+
+            // Show combo text
+            if (comboCount > 1) {
+                showComboText(comboCount);
+            }
+
+            // Create special candies for matches of 4 or more
+            const specialCandies = [];
+
+            for (const match of matches) {
+                if (match.cells.length === 4) {
+                    const specialType = match.direction === 'horizontal' ? 'striped-h' : 'striped-v';
+                    specialCandies.push({
+                        row: match.cells[1].row,
+                        col: match.cells[1].col,
+                        type: match.type,
+                        special: specialType
+                    });
+                } else if (match.cells.length >= 5) {
+                    specialCandies.push({
+                        row: match.cells[2].row,
+                        col: match.cells[2].col,
+                        type: match.type,
+                        special: 'color-bomb'
+                    });
+                }
+            }
+
+            // Check for L or T shapes (wrapped candy)
+            const allMatchedCells = new Map();
+            for (const match of matches) {
+                for (const cell of match.cells) {
+                    const key = `${cell.row},${cell.col}`;
+                    if (allMatchedCells.has(key)) {
+                        // Intersection found - create wrapped candy
+                        specialCandies.push({
+                            row: cell.row,
+                            col: cell.col,
+                            type: board[cell.row][cell.col].type,
+                            special: 'wrapped'
+                        });
+                    }
+                    allMatchedCells.set(key, cell);
+                }
+            }
+
+            // Calculate score
+            let matchScore = 0;
+            for (const match of matches) {
+                const baseScore = match.cells.length * 20;
+                matchScore += baseScore * comboCount;
+
+                // Show score popup for each match
+                const midCell = match.cells[Math.floor(match.cells.length / 2)];
+                showScorePopup(midCell.row, midCell.col, baseScore * comboCount);
+            }
+
+            // Trigger special candy effects
+            for (const match of matches) {
+                for (const cell of match.cells) {
+                    const candy = board[cell.row][cell.col];
+                    if (candy?.special) {
+                        matchScore += await triggerSpecialEffect(cell.row, cell.col, candy);
+                    }
+                }
+            }
+
+            score += matchScore;
+
+            // Animate matches
+            await animateMatches(matches);
+
+            // Remove matched candies
+            for (const match of matches) {
+                for (const cell of match.cells) {
+                    board[cell.row][cell.col] = null;
+                }
+            }
+
+            // Place special candies
+            for (const special of specialCandies) {
+                if (!board[special.row][special.col]) {
+                    board[special.row][special.col] = {
+                        type: special.type,
+                        special: special.special
+                    };
+                }
+            }
+
+            // Drop candies
+            await dropCandies();
+
+            // Fill empty spaces
+            await fillBoard();
+
+            // Check for new matches
+            const newMatches = findAllMatches();
+            if (newMatches.length > 0) {
+                await processMatches(newMatches);
+            }
+
+            updateUI();
+        }
+
+        async function triggerSpecialEffect(row, col, candy) {
+            let bonusScore = 0;
+            const toRemove = [];
+
+            if (candy.special === 'striped-h') {
+                for (let c = 0; c < COLS; c++) {
+                    toRemove.push({ row, col: c });
+                }
+                bonusScore = 100;
+                createLineEffect(row, col, 'horizontal');
+            } else if (candy.special === 'striped-v') {
+                for (let r = 0; r < ROWS; r++) {
+                    toRemove.push({ row: r, col });
+                }
+                bonusScore = 100;
+                createLineEffect(row, col, 'vertical');
+            } else if (candy.special === 'wrapped') {
+                for (let r = row - 1; r <= row + 1; r++) {
+                    for (let c = col - 1; c <= col + 1; c++) {
+                        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+                            toRemove.push({ row: r, col: c });
+                        }
+                    }
+                }
+                bonusScore = 200;
+                createExplosionEffect(row, col);
+            } else if (candy.special === 'color-bomb') {
+                const targetType = candy.type;
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (board[r][c]?.type === targetType) {
+                            toRemove.push({ row: r, col: c });
+                        }
+                    }
+                }
+                bonusScore = 500;
+                createColorBombEffect(row, col);
+            }
+
+            for (const cell of toRemove) {
+                if (board[cell.row][cell.col]) {
+                    createParticles(cell.row, cell.col, board[cell.row][cell.col].type);
+                    board[cell.row][cell.col] = null;
+                }
+            }
+
+            return bonusScore;
+        }
+
+        function animateMatches(matches) {
+            return new Promise(resolve => {
+                for (const match of matches) {
+                    for (const cell of match.cells) {
+                        const candyEl = document.querySelector(
+                            `.cell[data-row="${cell.row}"][data-col="${cell.col}"] .candy`
+                        );
+                        if (candyEl) {
+                            candyEl.classList.add('matched');
+                            createParticles(cell.row, cell.col, match.type);
+                        }
+                    }
+                }
+                setTimeout(resolve, 300);
+            });
+        }
+
+        async function dropCandies() {
+            let dropped = false;
+
+            for (let col = 0; col < COLS; col++) {
+                let emptyRow = ROWS - 1;
+
+                for (let row = ROWS - 1; row >= 0; row--) {
+                    if (board[row][col]) {
+                        if (row !== emptyRow) {
+                            board[emptyRow][col] = board[row][col];
+                            board[row][col] = null;
+                            dropped = true;
+                        }
+                        emptyRow--;
+                    }
+                }
+            }
+
+            if (dropped) {
+                renderBoard();
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+
+        async function fillBoard() {
+            let filled = false;
+
+            for (let col = 0; col < COLS; col++) {
+                for (let row = ROWS - 1; row >= 0; row--) {
+                    if (!board[row][col]) {
+                        board[row][col] = {
+                            type: CANDY_TYPES[Math.floor(Math.random() * CANDY_TYPES.length)],
+                            special: null
+                        };
+                        filled = true;
+                    }
+                }
+            }
+
+            if (filled) {
+                renderBoard();
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+        }
+
+        function showScorePopup(row, col, points) {
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = `+${points}`;
+            popup.style.left = `${cell.offsetLeft + 30}px`;
+            popup.style.top = `${cell.offsetTop}px`;
+
+            document.getElementById('gameContainer').appendChild(popup);
+
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function showComboText(combo) {
+            const comboText = document.getElementById('comboText');
+            const texts = ['', '', 'Sweet!', 'Delicious!', 'Divine!', 'Sugar Crush!'];
+            comboText.textContent = texts[Math.min(combo, texts.length - 1)] || 'AMAZING!';
+            comboText.classList.remove('show');
+            void comboText.offsetWidth;
+            comboText.classList.add('show');
+        }
+
+        function createParticles(row, col, type) {
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+
+            const colors = {
+                red: '#e74c3c',
+                orange: '#e67e22',
+                yellow: '#f1c40f',
+                green: '#27ae60',
+                blue: '#2980b9',
+                purple: '#8e44ad'
+            };
+
+            for (let i = 0; i < 8; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = '8px';
+                particle.style.height = '8px';
+                particle.style.background = colors[type] || '#fff';
+                particle.style.left = `${cell.offsetLeft + 30}px`;
+                particle.style.top = `${cell.offsetTop + 30}px`;
+
+                const angle = (Math.PI * 2 * i) / 8;
+                const distance = 40 + Math.random() * 30;
+                particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+
+                document.getElementById('gameContainer').appendChild(particle);
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        function createLineEffect(row, col, direction) {
+            const container = document.getElementById('gameContainer');
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+
+            const line = document.createElement('div');
+            line.style.position = 'absolute';
+            line.style.background = 'linear-gradient(90deg, transparent, white, transparent)';
+            line.style.zIndex = '50';
+
+            if (direction === 'horizontal') {
+                line.style.width = '100%';
+                line.style.height = '4px';
+                line.style.left = '10px';
+                line.style.top = `${cell.offsetTop + 28}px`;
+            } else {
+                line.style.width = '4px';
+                line.style.height = '100%';
+                line.style.left = `${cell.offsetLeft + 28}px`;
+                line.style.top = '10px';
+            }
+
+            line.style.animation = 'lineFlash 0.3s ease-out forwards';
+            container.appendChild(line);
+            setTimeout(() => line.remove(), 300);
+        }
+
+        function createExplosionEffect(row, col) {
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = `${6 + Math.random() * 8}px`;
+                particle.style.height = particle.style.width;
+                particle.style.background = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                particle.style.left = `${cell.offsetLeft + 30}px`;
+                particle.style.top = `${cell.offsetTop + 30}px`;
+
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 50 + Math.random() * 50;
+                particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+
+                document.getElementById('gameContainer').appendChild(particle);
+                setTimeout(() => particle.remove(), 600);
+            }
+        }
+
+        function createColorBombEffect(row, col) {
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.width = `${4 + Math.random() * 6}px`;
+                    particle.style.height = particle.style.width;
+                    particle.style.background = `hsl(${i * 12}, 80%, 60%)`;
+                    particle.style.left = `${cell.offsetLeft + 30}px`;
+                    particle.style.top = `${cell.offsetTop + 30}px`;
+
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 80 + Math.random() * 80;
+                    particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                    particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+
+                    document.getElementById('gameContainer').appendChild(particle);
+                    setTimeout(() => particle.remove(), 600);
+                }, i * 20);
+            }
+        }
+
+        function showHint() {
+            if (isAnimating) return;
+
+            // Find a valid move
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    // Try swapping with right neighbor
+                    if (col < COLS - 1) {
+                        swapInBoard(row, col, row, col + 1);
+                        if (findAllMatches().length > 0) {
+                            swapInBoard(row, col, row, col + 1);
+                            highlightHint(row, col, row, col + 1);
+                            return;
+                        }
+                        swapInBoard(row, col, row, col + 1);
+                    }
+
+                    // Try swapping with bottom neighbor
+                    if (row < ROWS - 1) {
+                        swapInBoard(row, col, row + 1, col);
+                        if (findAllMatches().length > 0) {
+                            swapInBoard(row, col, row + 1, col);
+                            highlightHint(row, col, row + 1, col);
+                            return;
+                        }
+                        swapInBoard(row, col, row + 1, col);
+                    }
+                }
+            }
+        }
+
+        function swapInBoard(r1, c1, r2, c2) {
+            const temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+        }
+
+        function highlightHint(r1, c1, r2, c2) {
+            const candy1 = document.querySelector(`.cell[data-row="${r1}"][data-col="${c1}"] .candy`);
+            const candy2 = document.querySelector(`.cell[data-row="${r2}"][data-col="${c2}"] .candy`);
+
+            if (candy1) candy1.classList.add('hint');
+            if (candy2) candy2.classList.add('hint');
+
+            setTimeout(() => {
+                if (candy1) candy1.classList.remove('hint');
+                if (candy2) candy2.classList.remove('hint');
+            }, 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = score.toLocaleString();
+            document.getElementById('moves').textContent = moves;
+
+            const progress = Math.min((score / TARGET_SCORE) * 100, 100);
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        function checkGameEnd() {
+            if (moves <= 0) {
+                setTimeout(() => showGameEnd(), 500);
+            } else if (score >= TARGET_SCORE) {
+                setTimeout(() => showGameEnd(), 500);
+            }
+        }
+
+        function showGameEnd() {
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('overlayTitle');
+            const finalScore = document.getElementById('finalScore');
+
+            if (score >= TARGET_SCORE) {
+                title.textContent = 'Level Complete!';
+            } else {
+                title.textContent = 'Game Over';
+            }
+
+            finalScore.textContent = score.toLocaleString();
+
+            // Calculate stars
+            const star1 = document.getElementById('star1');
+            const star2 = document.getElementById('star2');
+            const star3 = document.getElementById('star3');
+
+            star1.classList.remove('filled');
+            star2.classList.remove('filled');
+            star3.classList.remove('filled');
+
+            setTimeout(() => {
+                if (score >= TARGET_SCORE * 0.5) {
+                    star1.classList.add('filled');
+                }
+            }, 300);
+
+            setTimeout(() => {
+                if (score >= TARGET_SCORE) {
+                    star2.classList.add('filled');
+                }
+            }, 600);
+
+            setTimeout(() => {
+                if (score >= TARGET_SCORE * 1.5) {
+                    star3.classList.add('filled');
+                }
+            }, 900);
+
+            overlay.classList.add('show');
+        }
+
+        function resetGame() {
+            document.getElementById('overlay').classList.remove('show');
+            score = 0;
+            moves = 30;
+            comboCount = 0;
+            isAnimating = false;
+            selectedCandy = null;
+
+            createBoard();
+            renderBoard();
+            updateUI();
+        }
+
+        // Add CSS for line flash animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes lineFlash {
+                0% { opacity: 1; transform: scaleY(1); }
+                100% { opacity: 0; transform: scaleY(3); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
